@@ -108,6 +108,7 @@ void LinearRegression::train(const double& alpha, const int& iterations) {
         cout << "\rIteration: " << k << flush;
     }
     cout << endl;
+    cout << "RMSE: " << sqrt(prev_mse) << endl;
 }
 
 double LinearRegression::predict(const vector<double>& sample) {
