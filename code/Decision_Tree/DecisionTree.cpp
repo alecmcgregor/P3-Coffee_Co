@@ -2,16 +2,6 @@
 #include <algorithm>
 #include <limits>
 
-struct DecisionTreeRegressor::Node {
-    bool is_leaf;
-    int feature_index;
-    double threshold;
-    double prediction;
-    std::unique_ptr<Node> left;
-    std::unique_ptr<Node> right;
-    Node() : is_leaf(false), feature_index(-1), threshold(0.0), prediction(0.0) {}
-};
-
 DecisionTreeRegressor::DecisionTreeRegressor(int max_depth, int min_samples_split)
     : root_(nullptr), max_depth_(max_depth), min_samples_split_(min_samples_split) {}
 

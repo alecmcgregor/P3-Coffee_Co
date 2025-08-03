@@ -13,7 +13,15 @@ public:
     std::vector<double> predict(const std::vector<std::vector<double>>& X) const;
 
 private:
-    struct Node;
+    struct Node {
+        bool is_leaf;
+        int feature_index;
+        double threshold;
+        double prediction;
+        std::unique_ptr<Node> left;
+        std::unique_ptr<Node> right;
+        Node() : is_leaf(false), feature_index(-1), threshold(0.0), prediction(0.0) {}
+    };
     std::unique_ptr<Node> root_;
     int max_depth_;
     int min_samples_split_;
