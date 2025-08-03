@@ -5,4 +5,4 @@ project3.exe:
 
 run: project3.exe
 	./project3.exe "Linear_Regression" "data_generation/generated_coffee.csv" 0.0053 10000
-	./project3.exe "Decision_Tree" "data_generation/generated_coffee.csv" 6 5
+	./project3.exe "Decision_Tree" "data_generation/generated_coffee.csv" 12 20
