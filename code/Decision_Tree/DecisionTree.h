@@ -4,34 +4,40 @@
 #include <vector>
 #include <memory>
 
-class DecisionTreeRegressor {
+class DecisionTree {
 public:
-    DecisionTreeRegressor(int max_depth = 5, int min_samples_split = 10);
+    // max_depth: maximum tree depth; min_samples_split: minimum samples to consider a split
+    DecisionTree(int max_depth = 12, int min_samples_split = 20);
+    ~DecisionTree();
+
+    // Train on feature matrix X and target vector y
     void fit(const std::vector<std::vector<double>>& X,
              const std::vector<double>& y);
+
+    // Predict one sample or many
     double predict(const std::vector<double>& x) const;
     std::vector<double> predict(const std::vector<std::vector<double>>& X) const;
 
+    // Get normalized feature importances
+    std::vector<double> feature_importances() const;
+
 private:
-    struct Node {
-        bool is_leaf;
-        int feature_index;
-        double threshold;
-        double prediction;
-        std::unique_ptr<Node> left;
-        std::unique_ptr<Node> right;
-        Node() : is_leaf(false), feature_index(-1), threshold(0.0), prediction(0.0) {}
-    };
+    struct Node;
     std::unique_ptr<Node> root_;
     int max_depth_;
     int min_samples_split_;
+    std::vector<double> feature_importances_;
 
+    // Recursive tree construction
     std::unique_ptr<Node> buildTree(const std::vector<std::vector<double>>& X,
                                     const std::vector<double>& y,
                                     int depth);
+
+    // Recursive single‐sample prediction
     double predictSample(const Node* node,
                          const std::vector<double>& x) const;
 
+    // Helpers
     static double mean(const std::vector<double>& vals);
     static double variance(const std::vector<double>& vals);
     static double weightedMSE(const std::vector<double>& y,
