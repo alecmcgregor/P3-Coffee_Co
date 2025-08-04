@@ -37,6 +37,7 @@ int main(int argc, char* argv []) {
         const string iterations = argv[4];
         model.train(stod(alpha), stoi(iterations));
         model.printWeights();
+        model.saveResults();
     }
     if (mode == "Decision_Tree") {
         const string path = argv[2];
@@ -133,6 +134,22 @@ int main(int argc, char* argv []) {
         auto imps = model.feature_importances();
         for (size_t i=0;i<feats.size();++i)
             std::cout<<feats[i]<<": "<<imps[i]<<"\n";
+        
+        std::vector<double> pred = model.predict(Xte);
+
+        std::ofstream predfile("tree_predictions.csv");
+        predfile << "Predicted,Actual\n";
+        for (size_t i = 0; i < yte.size(); ++i) {
+            predfile << pred[i] << "," << yte[i] << "\n";
+        }
+        predfile.close();
+
+        std::ofstream impfile("tree_importances.csv");
+        auto importances = model.feature_importances();
+        for (double imp : importances) {
+            impfile << imp << "\n";
+        }
+        impfile.close();
     }
     return 0;
 }

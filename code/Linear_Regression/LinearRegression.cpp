@@ -5,129 +5,141 @@
 #include <vector>
 #include <cmath>
 #include <iomanip>
+#include <numeric>
+#include <limits>
+
 using namespace std;
 
 LinearRegression::LinearRegression(const string& path) {
-    //Read the file in
     ifstream file(path);
     if (!file.is_open()) {
-        cerr << "File could not be opened" << endl;
+        cerr << "Error: File could not be opened.\n";
         return;
     }
 
-    //ignore the column labels so that you're only reading in the numeric data
     string header;
-    getline(file, header);
+    getline(file, header); // Skip column labels
 
-    //read all the data in from each row and col and push everything in to the dataset, features into the matrix, and flavor values into the output
     string line;
     while (getline(file, line)) {
-        vector<double> row;
         istringstream ss(line);
         string cell;
+        vector<double> row;
+
         while (getline(ss, cell, ',')) {
-            row.push_back(stod(cell));
+            row.push_back(cell.empty() ? 0.0 : stod(cell));
         }
+
+        if (row.size() < 2) continue;
+
         dataset.push_back(row);
         output.push_back(row[1]);
-        vector<double> temp;
-        for (int i = 0; i < row.size(); i++) {
-            if (i != 1) {
-                temp.push_back(row[i]);
-            }
+
+        vector<double> features_row;
+        features_row.reserve(row.size() - 1);
+        for (size_t i = 0; i < row.size(); ++i) {
+            if (i != 1) features_row.push_back(row[i]); // exclude flavor score
         }
-        matrix.push_back(temp);
+        matrix.push_back(features_row);
     }
+
     file.close();
 
-    //initialize number of samples, features, and vector of weights
     samples = matrix.size();
     features = matrix[0].size();
-    weights.resize(features, 0.0);
+    weights.assign(features, 0.0);
 }
 
 void LinearRegression::train(const double& alpha, const int& iterations) {
-    //Initialize tolerances to make sure the model doesn't converge
-    double mseTolerance = 1e-6;
-    double gradientTolerance = 1e-4;
-    double prev_mse = 0.0;
+    const double mseTolerance = 1e-6;
+    const double gradientTolerance = 1e-4;
+    double prev_mse = std::numeric_limits<double>::max();
 
-    //Run the training loop for the number of iterations inputted
-    for (int k = 0; k < iterations; k++) {
-
-        //generate all the predicted values and place them in a vector
-        vector<double> predicted;
-        for (int i = 0; i < samples; i++) {
-            double result = 0.0;
-            for (int j = 0; j < features; j++) {
-                result += matrix[i][j] * weights[j];
-            }
-            result += bias;
-            predicted.push_back(result);
+    for (int iter = 0; iter < iterations; ++iter) {
+        vector<double> predicted(samples);
+        for (int i = 0; i < samples; ++i) {
+            predicted[i] = inner_product(matrix[i].begin(), matrix[i].end(), weights.begin(), bias);
         }
 
-        // calculate the mean squared error
+        vector<double> errors(samples);
         double mse = 0.0;
-        for (int i = 0; i < samples; i++) {
-            mse +=  (output[i] - predicted[i]) * (output[i] - predicted[i]);
+        for (int i = 0; i < samples; ++i) {
+            errors[i] = predicted[i] - output[i];
+            mse += errors[i] * errors[i];
         }
         mse /= samples;
 
-        //calculate the gradient of the weights and the bias
         vector<double> gradient(features, 0.0);
-        double avgerr = 0.0;
-        for (int i = 0; i < samples; i++) {
-            for (int j = 0; j < features; j++) {
-                gradient[j] += (predicted[i] - output[i]) * matrix[i][j];
+        double bias_grad = 0.0;
+        for (int i = 0; i < samples; ++i) {
+            bias_grad += errors[i];
+            for (int j = 0; j < features; ++j) {
+                gradient[j] += errors[i] * matrix[i][j];
             }
-            avgerr += predicted[i] - output[i];
         }
-        for (int i = 0; i < features; i++) {
-            gradient[i] *= 2.0 / samples;
-        }
-        avgerr *= 2.0 / samples;
 
-        // Compute the L2 norm to determine how much the weights are actually changing, then check to make sure that the model loss stabilizes or the gradient flattens out
-        double num = 0.0;
-        for (int i = 0; i < features; i++) {
-            num += gradient[i] * gradient[i];
-        }
-        num = sqrt(num);
-        if (k > 0 && (abs(mse - prev_mse) < mseTolerance || num < gradientTolerance)) {
+        bias_grad = 2.0 * bias_grad / samples;
+        for (double& g : gradient) g = 2.0 * g / samples;
+
+        double grad_norm = sqrt(inner_product(gradient.begin(), gradient.end(), gradient.begin(), 0.0));
+
+        if (iter > 0 && (abs(mse - prev_mse) < mseTolerance || grad_norm < gradientTolerance)) {
+            cout << "\nConverged at iteration " << iter << endl;
             break;
         }
+
+        for (int j = 0; j < features; ++j) {
+            weights[j] -= alpha * gradient[j];
+        }
+        bias -= alpha * bias_grad;
+
         prev_mse = mse;
 
-        //update the bias and the weights at the end of the loop
-        bias -= alpha * avgerr;
-        for (int i = 0; i < features; i++) {
-            weights[i] -= alpha * gradient[i];
+        if (iter % 500 == 0 || iter == iterations - 1) {
+            cout << "\rIteration: " << iter << " | RMSE: " << sqrt(mse) << flush;
         }
-
-        //Progress display to know that the code is running
-        cout << "\rIteration: " << k << flush;
     }
-    cout << endl;
-    cout << "RMSE: " << sqrt(prev_mse) << endl;
+
+    cout << "\nFinal RMSE: " << sqrt(prev_mse) << endl;
 }
 
-double LinearRegression::predict(const vector<double>& sample) {
-    //predicts the output for a single given sample, aka returns the predicted flavor score for a given bean sample
-    double result = 0.0;
-    for (int i = 0; i < features; i++) {
-        result += sample[i] *weights[i];
-    }
-    result += bias;
-    return result;
+double LinearRegression::predict(const vector<double>& sample) const {
+    return inner_product(sample.begin(), sample.end(), weights.begin(), bias);
 }
 
 void LinearRegression::printWeights() {
-    // iterate over the weights vector and print out the values as well as the bias
-    cout << "Feature Coefficients: " << endl;
-    cout << setw(12) << "Aroma" << setw(12) << "Aftertaste" << setw(12) << "Acidity" << setw(12) << "Body" << setw(12) << "Balance" << setw(12) << "Uniformity" << setw(12) << "Sweetness" << setw(12) << "Moisture" << endl;
-    for (int i = 0; i < features; i++) {
-        cout << setw(12) << weights[i];
+    cout << "Feature Coefficients:\n";
+    const vector<string> labels = {
+        "Aroma", "Aftertaste", "Acidity", "Body",
+        "Balance", "Uniformity", "Sweetness", "Moisture"
+    };
+
+    for (int i = 0; i < features && i < (int)labels.size(); ++i) {
+        cout << setw(12) << labels[i];
     }
-    cout << endl;
-    cout << "Bias: " << bias << endl;
+    cout << "\n";
+
+    for (double w : weights) {
+        cout << setw(12) << w;
+    }
+
+    cout << "\nBias: " << bias << endl;
+}
+
+void LinearRegression::saveResults() const {
+    // Save predictions vs actual
+    std::ofstream predfile("linear_predictions.csv");
+    predfile << "Predicted,Actual\n";
+    for (int i = 0; i < samples; ++i) {
+        double yhat = predict(matrix[i]);
+        predfile << yhat << "," << output[i] << "\n";
+    }
+    predfile.close();
+
+    // Save weights
+    std::ofstream wfile("linear_weights.csv");
+    for (double w : weights) {
+        wfile << w << "\n";
+    }
+    wfile.close();
 }

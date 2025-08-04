@@ -15,6 +15,7 @@ private:
 public:
     LinearRegression(const string& path);
     void train(const double& alpha, const int& iterations);
-    double predict(const vector<double>& sample);
+    double predict(const vector<double>& sample) const;
     void printWeights();
+    void saveResults() const;
 };
