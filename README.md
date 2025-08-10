@@ -1,5 +1,7 @@
 <H1> COP3530 - Project 3 </h1>
-These are the instructions for how to run our code.
+This project utilizes the CORGIS Coffee Dataset to determine what coffee characteristics most strongly influence flavor. This was done by creating a Multivariate Linear Regression Model and a Decision Tree Regression Model to compare outputs and see which factors more strongly influenced flavor and how these factors differed between models.
+
+Below are the instructions for how to run our code.
 
 <h2> Methods </h2>
 1. Navigate to the code folder in the repository and run the command: mingw32-make<br>
